@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asteroid figther</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: black;
+        }
+        canvas {
+            display: block;
+            position: absolute;
+        }
+        #shop {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            display: none;
+        }
+        button {
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="shop">
+        <h3>Shop</h3>
+        <button onclick="buySkin('skin1.PNG')">Skin 1 (20 Münzen)</button>
+        <button onclick="buySkin('skin2.PNG')">Skin 2 (20 Münzen)</button>
+        <button onclick="buySkin('skin3.PNG')">Skin 3 (20 Münzen)</button>
+        <button onclick="buyHeal()">Heilung (3 Münzen)</button>
+        <button onclick="closeShop()">Schließen</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const bgImage = new Image();
+        bgImage.src = "bg.PNG";
+
+        const playerImage = new Image();
+        playerImage.src = "spieler.PNG";
+
+        const enemyImage = new Image();
+        enemyImage.src = "gegner.PNG";
+
+        let player = { x: 100, y: 100, size: 50, speed: 5, coins: 0, kills: 0, health: 10, image: playerImage };
+        let enemies = [];
+        let bullets = [];
+        let coins = [];
+        let enemyStrength = 1;
+        let score = 0;
+        let keys = {};
+
+        window.addEventListener("keydown", (e) => keys[e.key] = true);
+        window.addEventListener("keyup", (e) => keys[e.key] = false);
+        window.addEventListener("click", shoot);
+
+        function shoot() {
+            bullets.push({ x: player.x + 25, y: player.y + 25, speed: 7 });
+        }
+
+        function spawnEnemy() {
+            enemies.push({ x: canvas.width, y: Math.random() * canvas.height, size: 50, speed: enemyStrength });
+            enemyStrength += 0.1;
+        }
+
+        function spawnCoin(x, y) {
+            coins.push({ x, y, size: 20 });
+        }
+
+        function update() {
+            if (keys["ArrowUp"]) player.y -= player.speed;
+            if (keys["ArrowDown"]) player.y += player.speed;
+            if (keys["ArrowLeft"]) player.x -= player.speed;
+            if (keys["ArrowRight"]) player.x += player.speed;
+
+            bullets.forEach((bullet, index) => {
+                bullet.x += bullet.speed;
+                enemies.forEach((enemy, eIndex) => {
+                    if (Math.abs(bullet.x - enemy.x) < enemy.size && Math.abs(bullet.y - enemy.y) < enemy.size) {
+                        bullets.splice(index, 1);
+                        enemies.splice(eIndex, 1);
+                        spawnCoin(enemy.x, enemy.y);
+                        player.kills++;
+                        score += 10;
+                    }
+                });
+            });
+
+            enemies.forEach((enemy, index) => {
+                enemy.x -= enemy.speed;
+                if (Math.abs(enemy.x - player.x) < 30 && Math.abs(enemy.y - player.y) < 30) {
+                    player.health--;
+                    enemies.splice(index, 1);
+                    if (player.health <= 0) alert("Game Over");
+                }
+            });
+
+            coins.forEach((coin, index) => {
+                if (Math.abs(coin.x - player.x) < 30 && Math.abs(coin.y - player.y) < 30) {
+                    coins.splice(index, 1);
+                    player.coins++;
+                }
+            });
+
+            if (Math.random() < 0.02) spawnEnemy();
+        }
+
+        function draw() {
+            ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(player.image, player.x, player.y, player.size, player.size);
+            enemies.forEach(enemy => ctx.drawImage(enemyImage, enemy.x, enemy.y, enemy.size, enemy.size));
+            bullets.forEach(bullet => {
+                ctx.fillStyle = "yellow";
+                ctx.fillRect(bullet.x, bullet.y, 5, 5);
+            });
+            coins.forEach(coin => {
+                ctx.fillStyle = "gold";
+                ctx.fillRect(coin.x, coin.y, coin.size, coin.size);
+            });
+            ctx.fillStyle = "white";
+            ctx.fillText(`Score: ${score}`, 10, 20);
+            ctx.fillText(`Kills: ${player.kills}`, 10, 40);
+            ctx.fillText(`Münzen: ${player.coins}`, 10, 60);
+            ctx.fillText(`Leben: ${player.health}`, 10, 80);
+            ctx.fillText("Drücke 'S' für Shop", 10, 100);
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "s") toggleShop();
+        });
+
+        function toggleShop() {
+            document.getElementById("shop").style.display = (document.getElementById("shop").style.display === "none") ? "block" : "none";
+        }
+
+        function closeShop() {
+            document.getElementById("shop").style.display = "none";
+        }
+
+        function buySkin(skin) {
+            if (player.coins >= 20) {
+                player.coins -= 20;
+                player.image.src = skin;
+                closeShop();
+            } else {
+                alert("Geringverdiener!");
+            }
+        }
+
+        function buyHeal() {
+            if (player.coins >= 3) {
+                player.coins -= 3;
+                player.health = Math.min(10, player.health + 1);
+                closeShop();
+            } else {
+                alert("Geringverdiener!");
+            }
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
